@@ -1,5 +1,5 @@
 # АНАЛИЗ ДАННЫХ И ИСКУССТВЕННЫЙ ИНТЕЛЛЕКТ [in GameDev]
-Отчет по лабораторной работе #1 выполнил(а):
+Отчет по лабораторной работе #2 выполнил(а):
 - Савченков Иван Алексеевич
 - РИ210943
 Отметка о выполнении заданий (заполняется студентом):
@@ -7,8 +7,8 @@
 | Задание | Выполнение | Баллы |
 | ------ | ------ | ------ |
 | Задание 1 | * | 60 |
-| Задание 2 | * | 20 |
-| Задание 3 | * | 20 |
+| Задание 2 | # | 20 |
+| Задание 3 | # | 20 |
 
 знак "*" - задание выполнено; знак "#" - задание не выполнено;
 
@@ -34,28 +34,136 @@
 Ознакомиться с основными операторами зыка Python на примере реализации линейной регрессии.
 
 ## Задание 1
-### Написать программы Hello World на Python и Unity
+### Реализовать совместную работу и передачу данных в связке Python - Google-Sheets – Unity. 
 
-Такой код я использовал на питоне. Так как пайтон - это интерпретируемый язык я могу позволить себе не использовать лишние синтаксические конструкции, одной строчки достаточно. Код запускался на Google Collab. Интерпритатор Python может выполнять программы, будучи загруженным на сервер, поэтому я могу использовать облачные сервисы для быстрой проверки программ. Такой-же особенностью обладет, например, Javascript.
+Сначала я подключил API Google Sheets, который необходим для организации взаимодействия листов с кодом.
+
+![image](https://user-images.githubusercontent.com/87923228/195067557-07f95151-3249-42a5-821e-75f1a5e62847.png)
+
+Затем написал код на Python, который заполнаяет Google Sheet случайными значениями.
 
 ```py
-print('Hello world')
+import gspread
+import numpy as np
+gc = gspread.service_account(filename="unitydatascience-364811-e0902db64fd4.json")
+sh = gc.open('UnitySheets')
+price = np.random.randint(2000,10000,11)
+mon = list(range(1,11))
+i = 0
+while i <= len(mon):
+    i += 1
+    if i == 0:
+        continue
+    else:
+        tempInf = ((price[i-1]-price[i-2])/price[i-2])*100
+        tempInf = str(tempInf)
+        tempInf = tempInf.replace(".",",")
+        sh.sheet1.update(('A' + str(i)), str(i))
+        sh.sheet1.update(('B' + str(i)), str(price[i-1]))
+        sh.sheet1.update(('C' + str(i)), str(tempInf))
+        print(tempInf)
 ```
 
-Это код из Unity. Язык c# не позволяет так-же просто как и питон вывести на экран "Hello world", написав всего одну строчку, так как это компилируемый язык. C# прекрасно показываает себя в Unity как Обьектно-Ориентированный язык.
+Туда я вставил имя файла Google Sheets, к которому буду обращаться из Unity. После запуска программы значения, находящиеся в ячейках В1-В11 и С1-С11 заполняются случайными значениями из заданного диапазона, в ячейках А1-11 записаны порядковые номера элементов. Ниже представлены полученные значения.
+
+1	6079	-27,44091668656004
+2	6747	10,988649448922521
+3	6868	1,7933896546613308
+4	3349	-51,23762376237624
+5	6233	86,11525828605554
+6	7871	26,27948018610621
+7	6929	-11,967983737771567
+8	2105	-69,62043584932891
+9	6541	210,73634204275535
+10	9849	50,573306833817455
+11	8378	-14,935526449385724
+
+Следующим шагом было написание кода на юнити. Я немного отклонился от шаблона и вместо трех методов вызова звука я написал один, в который можно передавть звуковую дорожку. Так я избежал дублирования кода.
 
 ```c#
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Networking;
+using SimpleJSON;
 
-public class odsfgj : MonoBehaviour
+public class NewBehaviourScript : MonoBehaviour
 {
+    public AudioClip GoodSpeak;
+    public AudioClip NormalSpeak;
+    public AudioClip BadSpeak;
+
+    private AudioSource selectAudio;
+
+    private Dictionary<string,float> dataSet = new Dictionary<string,float>();
+    private bool statusStart = false;
+
+    private int i = 1;
     // Start is called before the first frame update
     void Start()
     {
-        Debug.Log("Hello world");
+        StartCoroutine(GoogleSheets());
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        if (statusStart == false && i != dataSet.Count)
+        {
+            if (dataSet["Mon_" + i] <= 10)
+            {
+                StartCoroutine(PlayerPlayAudio(GoodSpeak,3));
+                Debug.Log(dataSet["Mon_" + i]);
+            }
+
+            if (dataSet["Mon_" + i] > 10 && dataSet["Mon_" + i] < 100)
+            {
+                StartCoroutine(PlayerPlayAudio(NormalSpeak,3));
+                Debug.Log(dataSet["Mon_" + i]);
+            }
+
+            if (dataSet["Mon_" + i] >= 100)
+            {
+                StartCoroutine(PlayerPlayAudio(BadSpeak,4));
+                Debug.Log(dataSet["Mon_" + i]);
+            }
+        }
+    }
+
+    IEnumerator GoogleSheets()
+    {
+        UnityWebRequest currentResp =
+            UnityWebRequest.Get(
+                "https://sheets.googleapis.com/v4/spreadsheets/1yvNqt1oZZr_-0qQleYdb_MskFP6eVn8oXfzdhMATnZE/values/LIST1?key=AIzaSyDcNwizJ4AW5nHk-LibeEsBVRI6ZAckFVg");
+        yield return currentResp.SendWebRequest();
+        var rawResp = currentResp.downloadHandler.text;
+        var rawJson = JSON.Parse(rawResp);
+        foreach (var itemRawJson in rawJson["values"])
+        {
+            var parseJson = JSON.Parse(itemRawJson.ToString());
+            var selectRow = parseJson[0].AsStringList;
+            dataSet.Add(("Mon_" + selectRow[0]), float.Parse(selectRow[2]));
+        }
+        Debug.Log(dataSet["Mon_1"]);
+    }
+
+    IEnumerator PlayerPlayAudio(AudioClip clip,int time)
+    {
+        statusStart = true;
+        selectAudio = GetComponent<AudioSource>();
+        selectAudio.clip = clip;
+        selectAudio.Play();
+        yield return new WaitForSeconds(time);
+        statusStart = false;
+        i++;
     }
 }
 ```
+
+В данном коде функция PlayerPlayAudio отвечает за проигрывание аудиодорожки, IEnumerator GoogleSheets() возвращает значения из Google Sheet и делает это лениво, с помощью yield return, в методе Update проверяется возвращенное значение, и в зависимости от величины значения воспроизводится соответственный звук.
+
+После запуска проекта в юнити, значения из листа поступили в программу и были выведены на консоль в юнити, с воспроизведением соответствующего звука.
+![image](https://user-images.githubusercontent.com/87923228/195069644-a6a05bc7-1cb1-4ce0-92c9-09ceed0e81b3.png)
 
 ## Задание 2
 ### В разделе "Ход работы" пошагово выполнить каждый пункт с описанием и примером реализации задачи по теме лабораторной работы
