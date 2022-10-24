@@ -17,338 +17,291 @@
 - к.э.н., доцент Панов М.А.
 - ст. преп., Фадеев В.О.
 
-Структура отчета
-
-- Данные о работе: название работы, фио, группа, выполненные задания.
-- Цель работы.
-- Задание 1.
-- Код реализации выполнения задания. Визуализация результатов выполнения (если применимо).
-- Задание 2.
-- Код реализации выполнения задания. Визуализация результатов выполнения (если применимо).
-- Задание 3.
-- Код реализации выполнения задания. Визуализация результатов выполнения (если применимо).
-- Выводы.
-- ✨Magic ✨
-
 ## Цель работы
-Ознакомиться с основными операторами зыка Python на примере реализации линейной регрессии.
+Познакомиться с программными средствами для создания системы машинного обучения и ее интеграции в Unity
 
 ## Задание 1
-### Написать программы Hello World на Python и Unity
+### Реализовать систему обучения MLAgent
+Сначала я создал новый проект в Unity.
 
-Такой код я использовал на питоне. Так как пайтон - это интерпретируемый язык я могу позволить себе не использовать лишние синтаксические конструкции, одной строчки достаточно. Код запускался на Google Collab. Интерпритатор Python может выполнять программы, будучи загруженным на сервер, поэтому я могу использовать облачные сервисы для быстрой проверки программ. Такой-же особенностью обладет, например, Javascript.
+![image](https://user-images.githubusercontent.com/87923228/197591976-4be3a37f-f6f5-4fb5-9870-517f4be5a18e.png)
 
-```py
-print('Hello world')
-```
+Затем я скачал папку с MlAgent в облаке с исходными данными.
 
-Это код из Unity. Язык c# не позволяет так-же просто как и питон вывести на экран "Hello world", написав всего одну строчку, так как это компилируемый язык. C# прекрасно показываает себя в Unity как Обьектно-Ориентированный язык.
+![image](https://user-images.githubusercontent.com/87923228/197592012-42ebcbef-edea-4b24-bd78-e61c77e8872c.png)
 
+В созданный проект я добавл MlAgent через PackageManager. 
+
+![image](https://user-images.githubusercontent.com/87923228/197592195-23dc93d7-773b-412d-b798-f2027cff8097.png)
+
+Далее я провел все необходимые манипуляции с Анакондой (Я её случайно закрыл в процессе работы, поэтому часть с установкой torch и других библиотек не сохранилась)
+![image](https://user-images.githubusercontent.com/87923228/197592215-5cb94867-5d8f-423e-b630-52309ec2dfc3.png)
+
+Все введенные команды необходимы были для установки Агента на мою машину, для того, чтобы я смог в юнити проекте взаимодействовать с ним. Для этого я в Юнити создал тестовую сцену, куда разместил агента и цель.
+
+![image](https://user-images.githubusercontent.com/87923228/197592396-8d441ec0-35b8-4fcb-aef2-2318e332bbaf.png)
+
+В файл скрипта агентя я построчно переписал код, чтобы лучше разобраться в том, как он работает.
 ```c#
-using UnityEngine;
-
-public class odsfgj : MonoBehaviour
-{
-    // Start is called before the first frame update
+ Rigidbody rBody;
+    public Transform Target;
+    public float forceMultiplier = 10;
     void Start()
     {
-        Debug.Log("Hello world");
+        rBody = GetComponent<Rigidbody>();
+    }
+    
+    public override void OnEpisodeBegin()
+    {
+        if (this.transform.localPosition.y < 0)
+        {
+            this.rBody.angularVelocity = Vector3.zero;
+            this.rBody.velocity = Vector3.zero;
+            this.transform.localPosition = new Vector3(0, 0.5f, 0);
+        }
+
+        Target.localPosition = new Vector3(Random.value * 8-4, 0.5f, Random.value * 8-4);
+    }
+    public override void CollectObservations(VectorSensor sensor)
+    {
+        sensor.AddObservation(Target.localPosition);
+        sensor.AddObservation(this.transform.localPosition);
+        sensor.AddObservation(rBody.velocity.x);
+        sensor.AddObservation(rBody.velocity.z);
+    }
+  
+    public override void OnActionReceived(ActionBuffers actionBuffers)
+    {
+        Vector3 controlSignal = Vector3.zero;
+        controlSignal.x = actionBuffers.ContinuousActions[0];
+        controlSignal.z = actionBuffers.ContinuousActions[1];
+        rBody.AddForce(controlSignal * forceMultiplier);
+
+        float distanceToTarget = Vector3.Distance(this.transform.localPosition, Target.localPosition);
+
+        if(distanceToTarget < 1.42f)
+        {
+            SetReward(1.0f);
+            EndEpisode();
+        }
+        else if (this.transform.localPosition.y < 0)
+        {
+            EndEpisode();
+        }
+    }
+```
+
+Обьекту сфера добавил компонент Rigitbody. Как я понял из исходного кода, это необходимо для того, чтобы отслеживать соприкосновение с коллайдером куба.
+
+![image](https://user-images.githubusercontent.com/87923228/197592551-05cdfa5d-b46e-4ad8-8abc-2a1be64aab9e.png)
+
+Моё предположение подтвердилось, когда я выключил коллайдер у куба. Компонент Behavior Parameters добавился автоматически, а Decision Requester пришлось добавлять вручную. Я задал всем компонентам необходимые характеристики и приступил к настройке конфигурации нейронной сети. Сначала я добавил файл конфигурации в проект
+
+![image](https://user-images.githubusercontent.com/87923228/197592634-05ed4639-f94f-48a3-9de5-951926d89098.png)
+
+Затем приступилк тесту, введя в консоль анаконды следующие команды, но ничего не получилось. Экспериментальная версия MlAgent не работала и мне пришлось сначала обновить её до рабочей release версии, а потом запускать тесты
+
+![image](https://user-images.githubusercontent.com/87923228/197592686-46b244ef-2153-470f-a8b5-f3dd2654c06f.png)
+
+В задании написано создать 3 9 и 27 копий, но я создал 2 4 и 16 копий.
+
+![image](https://user-images.githubusercontent.com/87923228/197592715-4d78426a-22cc-4fe6-83b9-1dc9256bae61.png)
+
+После достаточно длительного обучения я заметил результаты. Во первых во всех случаях рано или поздно шарик начинает в подавляющем большинтсве случаев достигать кубика, но время от начала обучения до этого момента завсисит от числа TargetArea. Чем их больше, тем эффективнее обучение. Исходя из этого можно сделать вывод, что если вам необходимо увеличить скорость обучения нейронной сети, то можно увеличить количество итераций. Так же, понаблюдав за обучением нельзя не отметить эффективность этой модели. По прошествию относительно небольшого промежутка времени уже почти каждый шарик достигал кубика.
+
+## Задание 2
+### Подробно опишите каждую строку файла конфигурации нейронной сети, доступного в папке с файлами проекта по ссылке.
+По ссылке файл недоступен, но я нашел решение. Судя по работе нейронной сети, файл конфигурации - это rollerball_config.yaml. Ну во первых в нем написано config, что недвусмысленно намекает нам на то, что он настраивает что-то, а судя по расширению настраивает MlAgent, а значит он является конфигурационным файлом нейрнной сети. Там я нашел следующий код
+```
+behaviors:
+  RollerBall:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 10
+      buffer_size: 100
+      learning_rate: 3.0e-4
+      beta: 5.0e-4 
+      epsilon: 0.2
+      lambd: 0.9
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: false
+      hidden_units: 128
+      num_layers: 2
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    max_steps: 500000 
+    time_horizon: 64
+    summary_freq: 10000
+```
+Разобравшись в коде и изрядно погуглив я так и не смог найти однозначного ответа на то, какие строчки за что отвечают. Я разобрался с тем, зачем нужны файл с расширением Yaml. Они используются для настройки различных самообучамых систем. Применяется в том числе и в яндексе. Я понял, что hyperparameters - это настройки присущие всей сети, network_settings - это настройки связи, а reward_signals за обратную связь и вывод результата. max_steps - максимальное число итераций, а summary_freq отвечает за сбор промежуточного результата.
+
+
+## Задание 3
+### Доработайте сцену и обучите ML-Agent таким образом, чтобы шар перемещался между двумя кубами разного цвета. Кубы должны, как и в первом задании, случайно изменять координаты на плоскости. 
+
+Сначала я добавил на Target Area второй куб, для того, чтобы MlAgent мог перемсещаться между ним и основным кубом.
+![image](https://user-images.githubusercontent.com/87923228/197587273-84f7f284-dcd5-4949-98e3-6de9981b5f9d.png)
+Мне пришлось слегка доработать скрипт Агента. Вместо изменения положения таргета он будет менять положения кубов
+```c#
+public class RollerAgent : Agent
+{
+    Rigidbody rBody;
+    public Transform RealTarget;
+    public Transform Cube1;
+    public Transform Cube2;
+    public float forceMultiplier = 10;
+    void Start()
+    {
+        rBody = GetComponent<Rigidbody>();
+    }
+
+    public override void OnEpisodeBegin()
+    {
+        if (this.transform.localPosition.y < 0)
+        {
+            this.rBody.angularVelocity = Vector3.zero;
+            this.rBody.velocity = Vector3.zero;
+            this.transform.localPosition = new Vector3(0, 0.5f, 0);
+        }
+
+        Cube1.localPosition = new Vector3(Random.value * 8 - 4, 0.5f, Random.value * 8 - 4);
+        Cube2.localPosition = new Vector3(Random.value * 8 - 4, 0.5f, Random.value * 8 - 4);
+    }
+    public override void CollectObservations(VectorSensor sensor)
+    {
+        sensor.AddObservation(RealTarget.localPosition);
+        sensor.AddObservation(this.transform.localPosition);
+        sensor.AddObservation(rBody.velocity.x);
+        sensor.AddObservation(rBody.velocity.z);
+    }
+
+    public override void OnActionReceived(ActionBuffers actionBuffers)
+    {
+        Vector3 controlSignal = Vector3.zero;
+        controlSignal.x = actionBuffers.ContinuousActions[0];
+        controlSignal.z = actionBuffers.ContinuousActions[1];
+        rBody.AddForce(controlSignal * forceMultiplier);
+
+        float distanceToTarget = Vector3.Distance(this.transform.localPosition, RealTarget.localPosition);
+
+        if (distanceToTarget < 1.42f)
+        {
+            SetReward(1.0f);
+            EndEpisode();
+        }
+        else if (this.transform.localPosition.y < 0)
+        {
+            EndEpisode();
+        }
+    }
+}
+```
+Теперь я передаю агенту и кубы и цель, а у цели меняется трансформ, в случае если трансформ кубов изменился. Я решил сделать это через метод Update.
+```c#
+public class RealTarget : MonoBehaviour
+{
+    [SerializeField]
+    private Transform firstCube;
+    [SerializeField]
+    private Transform secondCube;
+
+    private void Update()
+    {
+        var fTr = firstCube.transform.position;
+        var sTr = secondCube.transform.position;
+        transform.position = new Vector3((fTr.x + sTr.x)/2, (fTr.y + sTr.y) / 2, (fTr.z + sTr.z) / 2);
+    }
+```
+Безусловно, этот код не идеален и можно, например изменить его таким образом, чтобы рассчет положения происходил только после изменения положения кубов, а не постоянно. 
+```c#
+public class RealTarget : MonoBehaviour
+{
+    [SerializeField]
+    private Transform firstCube;
+    [SerializeField]
+    private Transform secondCube;
+
+    public void UpdateTransform()
+    {
+        var fTr = firstCube.transform.position;
+        var sTr = secondCube.transform.position;
+        transform.position = new Vector3((fTr.x + sTr.x)/2, (fTr.y + sTr.y) / 2, (fTr.z + sTr.z) / 2);
+    }
+}
+```
+Тогда можно написать метод, который будет вызываться извне. Напрмиер из класса Агента
+```c#
+public class RollerAgent : Agent
+{
+    Rigidbody rBody;
+    public GameObject RealTarget;
+    public Transform Cube1;
+    public Transform Cube2;
+    public float forceMultiplier = 10;
+    void Start()
+    {
+        rBody = GetComponent<Rigidbody>();
+    }
+
+    public override void OnEpisodeBegin()
+    {
+        if (this.transform.localPosition.y < 0)
+        {
+            this.rBody.angularVelocity = Vector3.zero;
+            this.rBody.velocity = Vector3.zero;
+            this.transform.localPosition = new Vector3(0, 0.5f, 0);
+        }
+        RealTarget.GetComponent<RealTarget>().UpdateTransform();
+        Cube1.localPosition = new Vector3(Random.value * 8 - 4, 0.5f, Random.value * 8 - 4);
+        Cube2.localPosition = new Vector3(Random.value * 8 - 4, 0.5f, Random.value * 8 - 4);
+    }
+    public override void CollectObservations(VectorSensor sensor)
+    {
+        sensor.AddObservation(RealTarget.transform.localPosition);
+        sensor.AddObservation(this.transform.localPosition);
+        sensor.AddObservation(rBody.velocity.x);
+        sensor.AddObservation(rBody.velocity.z);
+    }
+
+    public override void OnActionReceived(ActionBuffers actionBuffers)
+    {
+        Vector3 controlSignal = Vector3.zero;
+        controlSignal.x = actionBuffers.ContinuousActions[0];
+        controlSignal.z = actionBuffers.ContinuousActions[1];
+        rBody.AddForce(controlSignal * forceMultiplier);
+
+        float distanceToTarget = Vector3.Distance(this.transform.localPosition, RealTarget.transform.localPosition);
+
+        if (distanceToTarget < 1.42f)
+        {
+            SetReward(1.0f);
+            EndEpisode();
+        }
+        else if (this.transform.localPosition.y < 0)
+        {
+            EndEpisode();
+        }
     }
 }
 ```
 
-## Задание 2
-### В разделе "Ход работы" пошагово выполнить каждый пункт с описанием и примером реализации задачи по теме лабораторной работы
+В таком случае обучение будет проходить быстрее.
 
-Работу буду выполнять в IDE PyCharm потому, что в рамках обязательного курса использую её. В облачных сервисах код исполняется с задержкой и требует времени на ожидание проверки. В случаях, когда вычислительных мощностей вашего ПК недостаточно это имеет смысл, но в моей ситуации считаю целесообразным использовать IDE на стационарном компьютере, это сократит время отклика и ускорит процесс.
+Как вы можете видеть из следующего ролика Шарик действительно движется к точке между кубами
 
-Сначала я провел подготовку данных для работы с алгоритмом линейной регрессии
 
-```py
+https://user-images.githubusercontent.com/87923228/197588934-e4d7076d-7f44-40e8-92b5-a92a3a656929.mp4
 
-import numpy as np
-import matplotlib.pyplot as plt
 
-x = [3, 21, 22, 34, 54, 55, 67, 89, 99]
-x = np.array(x)
-y = [2, 22, 24, 65, 79, 82, 55, 130, 150, 199]
-y = np.array(y)
-
-plt.scatter(x, y)
-
-```
-
-Затем я перенес математические функции.
-
-
-```py
-import numpy as np
-import matplotlib.pyplot as plt
-
-x = [3, 21, 22, 34, 54, 55, 67, 89, 99]
-x = np.array(x)
-y = [2, 22, 24, 65, 79, 82, 55, 130, 150, 199]
-y = np.array(y)
-
-plt.scatter(x, y)
-
-
-def model(a, b, x):
-    return a * x + b
-
-
-def loss_function(a, b, x, y):
-    num = len(x)
-    prediction = model(a, b, x)
-    return (0.5 / num) * (np.sqare(prediction - y)).sum()
-
-
-def optimize(a, b, x, y):
-    num = len(x)
-    prediction = model(a, b, x)
-    deltaA = (1.0 / num) * ((prediction - y) * x).sum()
-    deltaB = (1.0 / num) * ((prediction - y).sum())
-    a = a - Lr * deltaA
-    b = b - Lr * deltaB
-    return a, b
-
-
-def iterate(a, b, x, y, times):
-    for i in range(times):
-        a, b = optimize(a, b, x, y)
-    return a,b
-```
-
-Связаны фунции iterate и optimize. Резонный вопрос, каим образом они связаны. В функции optimize выполняется алгоритм градиентного спуска. Насолько я понял, с его помощью мы можем обучить модель строить линейную регрессию. Для этого нужно, чтобы алгоритм повторялся много раз. Количество посторений передается в функцию iterate.
-
-Также связаны функции model и loss_function. Функция модели нужна для предсказания результата в функции рассчета среднеквадратичной ошибки.
-
-После переноса функций я начал итерацию. Для этого мне пришлось разобраться с параметром Lr, о котором я написал в задании 3. Запускал я итерации в Google Collab, предварительно попарвив ошибки в коде. Итоговая версия для теста выглядит так.
-
-```py
-import numpy as np
-import matplotlib.pyplot as plt
-
-x = [3, 21, 22, 34, 54, 34, 55, 67, 89, 99]
-x = np.array(x)
-y = [2, 22, 24, 65, 79, 82, 55, 130, 150, 199]
-y = np.array(y)
-
-plt.scatter(x, y)
-
-
-def model(a, b, x):
-    return a * x + b
-
-
-def loss_function(a, b, x, y):
-    num = len(x)
-    prediction = model(a, b, x)
-    return (0.5 / num) * (np.square(prediction - y)).sum()
-
-
-def optimize(a, b, x, y, Lr):
-    num = len(x)
-    prediction = model(a, b, x)
-    deltaA = (1.0 / num) * ((prediction - y) * x).sum()
-    deltaB = (1.0 / num) * ((prediction - y).sum())
-    a = a - Lr * deltaA
-    b = b - Lr * deltaB
-    return a, b
-
-
-def iterate(a, b, x, y, times, learn_rate):
-    for i in range(times):
-        a, b = optimize(a, b, x, y,learn_rate)
-    return a, b
-
-
-a = np.random.rand(1)
-print(a)
-b = np.random.rand(1)
-print(b)
-Lr = 0.000001
-
-a, b = iterate(a, b, x, y, 10000,Lr)
-prediction = model(a, b, x)
-loss = loss_function(a, b, x, y)
-print(a, b, loss)
-plt.scatter(x, y)
-plt.plot(x, prediction)
-```
-
-Вот результаты первой итерации
-
-[0.69216716]
-[0.04986405]
-[0.69549611] [0.04991171] 1942.5837279794007
-[<matplotlib.lines.Line2D at 0x7f121b5c4e50>]
-
-![image](https://user-images.githubusercontent.com/87923228/191196408-7deabf88-7630-4439-9c37-4a25d2081e06.png)
-
-Второй итерации
-
-[0.93455782]
-[0.30316897]
-[0.93966136] [0.30324049] 1216.868876417384
-[<matplotlib.lines.Line2D at 0x7f121be37dd0>]
-
-![image](https://user-images.githubusercontent.com/87923228/191196360-a456a315-c80d-4f8e-9a44-79efeada1e72.png)
-
-Третьей итерации
-
-[0.12109289]
-[0.8610943]
-[0.13629475] [0.86131602] 4229.302780317601
-[<matplotlib.lines.Line2D at 0x7f121b5a42d0>]
-
-![image](https://user-images.githubusercontent.com/87923228/191196286-1dc3b727-8cf5-4f91-831d-47491067d0ff.png)
-
-Четвертой итерации
-
-[0.98758956]
-[0.41456584]
-[0.99708053] [0.41469788] 1072.5604219576526
-[<matplotlib.lines.Line2D at 0x7f121b626290>]
-
-![image](https://user-images.githubusercontent.com/87923228/191196210-a2677922-1c87-441f-9004-e0d7c1b39442.png)
-
-Пятой итерации
-
-[0.56623783]
-[0.36694814]
-[0.58466764] [0.3672132] 2312.946368460194
-[<matplotlib.lines.Line2D at 0x7f121b4df6d0>]
-
-![image](https://user-images.githubusercontent.com/87923228/191196474-e6ae2652-0388-44ed-99c0-7752c4b9e302.png)
-
-Десятитысячной итерации
-
-[0.05341429]
-[0.43897414]
-[1.74655408] [0.43351483] 190.07975691902615
-[<matplotlib.lines.Line2D at 0x7f121b454f10>]
-
-![image](https://user-images.githubusercontent.com/87923228/191196567-d1f33b6d-b22e-47af-b442-87dd9155bdaa.png)
-
-Еще примеры десятитысячных итераций
-
-![image](https://user-images.githubusercontent.com/87923228/191196101-cd25c099-3753-4b3f-a941-2ebe14b7bf63.png)
-
-![image](https://user-images.githubusercontent.com/87923228/191196132-2c18d37c-a617-4dbb-9502-a6cb41355e92.png)
-
-![image](https://user-images.githubusercontent.com/87923228/191196631-3f639482-f078-4a15-b236-6fb5c412e585.png)
-
-Как видно из графиков по мере увеличения количества итераций эффективность построения предположения растет. 
-
-
-
-## Задание 3
-### Должна ли величина loss стремиться к 0 при изменении исходных данных?
-
-Однозначно да. Иначе зачем этот алгоритм? loss - величина показывающая количество потерь. По мере увеличения нами количества итераций мы наблюдаем уменьшение этой величины. 
-
-Первая итерация
-[0.17433163]
-[0.02935553]
-[0.66991467] [0.03659929] 2029.1517583238867
-[<matplotlib.lines.Line2D at 0x7f121b48c890>]
-![image](https://user-images.githubusercontent.com/87923228/191198367-4667e932-9b61-46a3-b341-44d2c315d308.png)
-
-Десятая
-
-[0.16113125]
-[0.31945804]
-[1.71137446] [0.33996617] 191.89427054029227
-[<matplotlib.lines.Line2D at 0x7f121ae740d0>]
-![image](https://user-images.githubusercontent.com/87923228/191198806-5337e19e-b759-4c2c-accc-ac73e6ecda67.png)
-
-Сотая
-
-[0.79775035]
-[0.62858475]
-[1.74384777] [0.61126646] 190.63855889580995
-[<matplotlib.lines.Line2D at 0x7f121adf5910>]
-![image](https://user-images.githubusercontent.com/87923228/191198853-2bacc197-edfe-4ba2-a722-5964189ffe9c.png)
-
-Тысячная
-
-[0.02528197]
-[0.99612263]
-[1.74251649] [0.69870587] 190.9166012643584
-[<matplotlib.lines.Line2D at 0x7f121ad76190>]
-![image](https://user-images.githubusercontent.com/87923228/191198925-0a4f1e18-3f12-49d2-bf26-3ed07a0f529e.png)
-
-
-Десятитысячная 
-
-[0.18231691]
-[0.98177152]
-[1.78149165] [-1.86120177] 183.63825794898045
-[<matplotlib.lines.Line2D at 0x7f121aced990>]
-![image](https://user-images.githubusercontent.com/87923228/191198978-da47416f-5178-4aa4-8c49-cb4d2de19752.png)
-
-### Какова роль параметра Lr? Ответьте на вопрос, приведите пример выполнения кода, который подтверждает ваш ответ. В качестве эксперимента можете изменить значение параметра.
-Методом научного гугла я выяснил, что алгоритм градиентного спуска требует параметра скорости обучения. Методом исключения я выяснил, что переменная Lr как раз подходит под это значение. Я решил изменить код, чтобы эту переменную можно было передать через функцию optimize.
-
-```py
-import numpy as np
-import matplotlib.pyplot as plt
-
-x = [3, 21, 22, 34, 54, 34, 55, 67, 89, 99]
-x = np.array(x)
-y = [2, 22, 24, 65, 79, 82, 55, 130, 150, 199]
-y = np.array(y)
-
-plt.scatter(x, y)
-
-
-def model(a, b, x):
-    return a * x + b
-
-
-def loss_function(a, b, x, y):
-    num = len(x)
-    prediction = model(a, b, x)
-    return (0.5 / num) * (np.square(prediction - y)).sum()
-
-
-def optimize(a, b, x, y, Lr):
-    num = len(x)
-    prediction = model(a, b, x)
-    deltaA = (1.0 / num) * ((prediction - y) * x).sum()
-    deltaB = (1.0 / num) * ((prediction - y).sum())
-    a = a - Lr * deltaA
-    b = b - Lr * deltaB
-    return a, b
-
-
-def iterate(a, b, x, y, times, learn_rate):
-    for i in range(times):
-        a, b = optimize(a, b, x, y,learn_rate)
-    return a, b
-
-
-a = np.random.rand(1)
-print(a)
-b = np.random.rand(1)
-print(b)
-Lr = 0.000001
-
-a, b = iterate(a, b, x, y, 10000,Lr)
-prediction = model(a, b, x)
-loss = loss_function(a, b, x, y)
-print(a, b, loss)
-plt.scatter(x, y)
-plt.plot(x, prediction)
-```
-
-Теперь мы можем задать скорость прямо через функцию optimize.
 
 ## Выводы
 
-Исходя из проделанной работы можно сделать вывод. Во первых - эффективность самообучаемого алгоритма растет по мере увеличения количества итераций.  Во вторых самообучаемый алгоритм позволяет достичь высокой точности рассчетов при прогнозах. Это очень полезно для симуляции экономики, например.
-
+Что такое игровой баланс? Игровой баланс отражает то, как ощущается игра. Это совокупность всех возможностей, которые она предоставляет игроку на том или ином этапе. Игрвой баланс одна из самых важных частей игры и сейчас я опишу, как с помощью систем машинного обучения можно в игре про выживание настроить баланс выпадения вещей. Допустим вы разрабатываете игру-сурвайвал, в которой выжившие с каждым днем все меньше оставляют вещей тем, кто после них придет лутать локацию. Тут на лицо алгоритм линейной регрессии. Но вы не хотите слепого уменьшения количества лута. По мере течения времени число целых вещей уменьшается, а сломанных увеличивается. Сломанные вещи можно разобрать и из них сделать компоненты, из которых собрать что-то смаодельное. Возмем, напрмер, автомат. Вы хотите, чтобы через один игровой год автоматов заводского производства было в два раза больше, потому что люди за год не успели наладить производство, через 4 года их было поравну, а через 8 лет, почти все автоматы были бы самодельные. Вы создаете симуляцию, в котором шанс спавна автомата уменьшается пропорционально количеству найденных автоматов и регулируете его в зависимости от результата машинного обучения. Если в результате новые автоматы не исчезают, значит шанс нужно уменьшать сильнее, а если исчезают за первый год, то шанс увеличивать. Схема, я думаю, ясна. Системы машинного обучения позволят нам узнать, как поведет себя система при тех или иных исходных данных. Регулируя эти исходные данные, мы можем отбалансировать нужный нам аспект игры должным образом.
+ 
 
 | GitHub | [https://github.com/Saw4uk/DA-in-GameDev-lab1)] |
 | Google Drive | [https://drive.google.com/drive/u/0/folders/1hHAR0jKNRbnM2ViSx3jJJBN7zfejcbe8] |
