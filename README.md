@@ -230,9 +230,7 @@ public class CubeData : MonoBehaviour
 public class PerceptronController : MonoBehaviour
 {
     [SerializeField]
-    private Perceptron perceptron;
-
-    public Perceptron Perceptron => perceptron;
+    public Perceptron Perceptron { get; set; }
 
     private Color zeroColor;
     private Color oneColor;
@@ -246,6 +244,7 @@ public class PerceptronController : MonoBehaviour
         zeroColor = Color.black;
         oneColor = Color.white;
     }
+    
 }
 ```
 
@@ -264,7 +263,7 @@ public class TriggerCubeLogic : MonoBehaviour
     public void OnTriggerEnter(Collider other)
     {
         var perceptrone = perceptronController.Perceptron;
-        GetComponent<Material>().color =
+        GetComponent<Renderer>().material.color =
             perceptrone.CalcOutput(GetComponent<CubeData>().Data, other.GetComponent<CubeData>().Data) == 1
                 ? perceptronController.OneColor
                 : perceptronController.ZeroColor;
@@ -272,7 +271,70 @@ public class TriggerCubeLogic : MonoBehaviour
 }
 ```
 
+Кубик будет падать и вызывать событие OnTriggerEnter. Затем он будет обращаться к контроллеру перцептронов и в зависимости от результата выполнения на входных данных из кубиков выдавать результат.
+
 Так как Контроллер фактически Singleton, то я считаю оправданным в данной ситуации обращение по имени обьекта, так как в текущей обстановке гарантируется, что обьект будет один. Нужно отметить, что при моей концепции это не ухудшает расширяемость кода и не является плохой практикой. Это позволит мне создавать сколько угодно кубов, при этом не затрачивая никаких усилий на указывание этим кубам на контроллер, с моей стороны нужно просто гарантирвоать его единственность.
+
+Затем сделал небольшой интерфейс для перключения перцептрона. По нажатию кнопки можно будет изменить текущий перцептрон и, соответственно, логику работы программы.
+
+![image](https://user-images.githubusercontent.com/87923228/204025845-b01e2ff9-7638-4b0c-9e38-49351e156ee2.png)
+
+Написал класс логики кнопки
+
+```c#
+public class PerceptronButtonLogic : MonoBehaviour
+{
+    [SerializeField] private Perceptron perceptron;
+    
+    private PerceptronController perceptronController;
+
+    public void Awake()
+    {
+        perceptronController = FindObjectOfType(typeof(PerceptronController)) as PerceptronController;
+        GetComponent<Button>().onClick.AddListener(OnClick);
+    }
+
+    private void OnClick()
+    {
+        perceptronController.Perceptron = perceptron;
+        perceptronController.UpAllCubes();
+    }
+}
+```
+
+По нажатию на неё у контроллера буте меняться перцептрон и подниматься все кубики, для этого немного изменил класс контроллера
+
+```c#
+public class PerceptronController : MonoBehaviour
+{
+    public Perceptron Perceptron { get; set; }
+
+    [SerializeField] private List<GameObject> CubesToUp;
+
+    private Color zeroColor;
+    private Color oneColor;
+
+    public Color ZeroColor => zeroColor;
+
+    public Color OneColor => oneColor;
+
+    void Awake()
+    {
+        zeroColor = Color.black;
+        oneColor = Color.white;
+    }
+
+    public void UpAllCubes()
+    {
+        CubesToUp.Select(x =>
+            x.transform.position =
+                new Vector3(x.transform.position.x, x.transform.position.y + 10, x.transform.position.z));
+    }
+}
+```
+
+
+
 
 ## Выводы
 
