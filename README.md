@@ -262,7 +262,7 @@ public class TriggerCubeLogic : MonoBehaviour
 
     public void OnTriggerEnter(Collider other)
     {
-        var perceptrone = perceptronController.Perceptron;
+        var perceptrone = perceptronController.perceptron;
         GetComponent<Renderer>().material.color =
             perceptrone.CalcOutput(GetComponent<CubeData>().Data, other.GetComponent<CubeData>().Data) == 1
                 ? perceptronController.OneColor
@@ -296,7 +296,7 @@ public class PerceptronButtonLogic : MonoBehaviour
 
     private void OnClick()
     {
-        perceptronController.Perceptron = perceptron;
+        perceptronController.perceptron = perceptron;
         perceptronController.UpAllCubes();
     }
 }
@@ -307,7 +307,7 @@ public class PerceptronButtonLogic : MonoBehaviour
 ```c#
 public class PerceptronController : MonoBehaviour
 {
-    public Perceptron Perceptron { get; set; }
+    public Perceptron perceptron;
 
     [SerializeField] private List<GameObject> CubesToUp;
 
@@ -326,19 +326,28 @@ public class PerceptronController : MonoBehaviour
 
     public void UpAllCubes()
     {
-        CubesToUp.Select(x =>
-            x.transform.position =
-                new Vector3(x.transform.position.x, x.transform.position.y + 10, x.transform.position.z));
+        foreach (var cube in CubesToUp)
+        {
+            var position = cube.transform.position;
+            position =
+                new Vector3(position.x, position.y + 10, position.z);
+            cube.transform.position = position;
+        }
     }
 }
 ```
+Перетащил кубы для падения в список контроллера.
+![image](https://user-images.githubusercontent.com/87923228/204027959-f2141063-3762-4ef1-ab2e-8ee0087f6983.png)
 
+Вот наглядная демонстрация работы программы
 
+https://user-images.githubusercontent.com/87923228/204029126-4c196477-9899-49d5-ae9c-1fc444a5092a.mp4
 
+Давайте пройдемся по плюсам программы. Во первых это очень расширяемый код. Во вторых его удобно использовать. Кубы лежат списком, в инспекторе, хоть 1000 добавь, все будет работать, переключение перцептрона привязано к кнопке, тоже можно любой перцептрон добавить, цвета кубиков лежат в контроллере, поэтому можно отображать не только черный и белый, а изменить всего один раз там и он везде сразу изменится. Мне понравилось писать этот код, я отлично ознакомился с работой перцептрона и применил знания на практике.
 
 ## Выводы
 
-Исходя из проделанной работы можно сделать вывод. Во первых - эффективность самообучаемого алгоритма растет по мере увеличения количества итераций.  Во вторых самообучаемый алгоритм позволяет достичь высокой точности рассчетов при прогнозах. Это очень полезно для симуляции экономики, например.
+Перцептрон это один из переходных инструментов в создании нейронных сетей, хотя название здесь не так уместно. У него есть слабые метса, которые исправили в нейронах. Мне очень понравилось работать с перцептроном, это очень хорошо помогает разобраться с тем, как работают нейронные сети и логика в целом.
 
 
 | GitHub | [https://github.com/Saw4uk/DA-in-GameDev-lab1)] |
