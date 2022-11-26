@@ -49,6 +49,9 @@
 
 ![image](https://user-images.githubusercontent.com/87923228/204092684-0f281326-cbbc-4fdc-b1eb-ac51f7e08f18.png)
 
+Посмотрел на свои результаты
+
+![image](https://user-images.githubusercontent.com/87923228/204092877-af9b1630-086e-4487-afb6-3b31231bb0b8.png)
 
 
 ## Задание 1
