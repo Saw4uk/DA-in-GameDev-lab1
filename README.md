@@ -41,6 +41,16 @@
 
 Затем я провел все необходимые манипуляции с анакондой. Виртуальное окружение MLAgent уже было установлено в папке проекта, поэтому я переустановил его. Затме оказалось, что необходимо снова установить torch - без него проект не работал. Я прописал pip install torch и все заработало. Затем я начал обучение через юнити.
 
+Затем я скачал tensorflow
+
+![image](https://user-images.githubusercontent.com/87923228/204092646-eac21f44-5b03-4fa4-8de5-3c1f12ac4d63.png)
+
+Запустил tensorboard
+
+![image](https://user-images.githubusercontent.com/87923228/204092684-0f281326-cbbc-4fdc-b1eb-ac51f7e08f18.png)
+
+
+
 ## Задание 1
 ### Написать программы Hello World на Python и Unity
 
