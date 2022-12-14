@@ -150,10 +150,6 @@ public class NewBehaviourScript : MonoBehaviour
 }
 ```
 
-![image](https://user-images.githubusercontent.com/87923228/207637881-59832034-97c6-4fec-86e4-9efa67f5eb2e.png)
-![image](https://user-images.githubusercontent.com/87923228/207637894-64043a81-029e-4f35-b353-4316663b9f01.png)
-![image](https://user-images.githubusercontent.com/87923228/207637896-a3567f44-0bbe-48e0-942f-fcdf585f18f3.png)
-
 
 В данном коде функция PlayerPlayAudio отвечает за проигрывание аудиодорожки, IEnumerator GoogleSheets() возвращает значения из Google Sheet и делает это лениво, с помощью yield return, в методе Update проверяется возвращенное значение, и в зависимости от величины значения воспроизводится соответственный звук.
 
